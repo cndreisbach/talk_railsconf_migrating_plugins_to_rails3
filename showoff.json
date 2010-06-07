@@ -1,7 +1,0 @@
-{ "name": "Migrating Plugins and Gems to Rails 3", 
-  "sections": [ 
-    {"section":"intro"},
-    {"section":"easy_stuff"},
-    {"section":"plugging_in"}
-  ]
-}

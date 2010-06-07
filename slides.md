@@ -1,10 +1,29 @@
-!SLIDE
+Title: Migrating Plugins to Rails 3
+Author: Clinton R. Nixon
+CSS: css/railsconf.css
 
-# Rake Tasks
+---
+Class: title
 
-!SLIDE
+# Migrating Plugins to Rails 3
+
+## Clinton R. Nixon, Viget Labs
+
+---
+## Projects used for examples
+
+* Formtastic
+* Typus
+
+---
+# Rake tasks
+{: .section-title}
+
+---
 
 `tasks/` has been deprecated. Rake tasks go in `lib/tasks/` now.
+
+---
 
 Rake tasks can also now be moved into a Railtie:
 
@@ -21,24 +40,24 @@ Rake tasks can also now be moved into a Railtie:
       end
     end
 
-!SLIDE
-
+---
 # Generators
+{: .section-title}
 
-!SLIDE bullets
+--- 
 
-## Big difference
+## Big changes
 
 * Rails 2: Rubigen
 * Rails 3: Thor
 
-!SLIDE
+---
 
 ## Rails::Generators::Base
 
-Pulls in a lot of the Rubigen API.
+Replicates in a lot of the Rubigen API.
 
-!SLIDE
+---
 
 ## Rails 2 generator
 
@@ -54,7 +73,7 @@ Pulls in a lot of the Rubigen API.
       end
     end
 
-!SLIDE
+---
 
 ## Rails 3 generator
 
@@ -68,7 +87,7 @@ Pulls in a lot of the Rubigen API.
       end
     end
 
-!SLIDE
+---
 
 ## Rails 2 generator with name and options
 
@@ -90,7 +109,7 @@ Pulls in a lot of the Rubigen API.
       end
     end
 
-!SLIDE
+---
 
 ## Rails 3 generator with name and options
 
@@ -111,16 +130,79 @@ Pulls in a lot of the Rubigen API.
       end
     end
 
-!SLIDE
+---
 
 Like tasks, generators have moved from `generators/` to `lib/generators/`.
 
-!SLIDE
+---
 
-## RAILS_*
+# RAILS_*
 
 All the `RAILS_*` constants are now deprecated. 
 
 Move to using the `Rails` object:
+
   * `Rails.env`
   * `Rails.root`
+
+---
+# Plugging in to Rails 3
+{: .section-title}
+
+---
+
+## The Rails 2 way
+
+    ActionView::Base.send :include, Formtastic::SemanticFormHelper
+    ActionView::Base.send :include, Formtastic::LayoutHelper
+
+---
+
+## The Rails 3 way
+
+    ActiveSupport.on_load(:action_view) do
+      include Formtastic::SemanticFormHelper
+      include Formtastic::LayoutHelper
+    end
+
+Whatever callback you use, it gives you the context of `ActionWhatever::Base`.
+
+--- 
+
+## ActiveSupport hooks
+
+* `before_configuration`
+* `before_initialize`
+* `before_eager_load`
+* `after_initialize`
+* All the base classes: `active_record`, `action_controller`, `action_view`, `action_mailer`, `i18n`
+
+You can execute whatever code you need to inside these.
+
+---
+
+## An example of using ActiveSupport hooks
+
+In the plugin `rails_footnotes`:
+
+    module Footnotes::Extensions::Exception
+      def self.included(base)
+        base.class_eval do
+          alias_method_chain :clean_backtrace, :links
+        end
+      end
+      # ... 
+      def clean_backtrace_with_links
+        # ...
+      end
+    end
+
+    Exception.send :include, Footnotes::Extensions::
+
+A problem: Exception doesn't have a `clean_backtrace` method in Rails 3.
+
+---
+
+## The solution
+
+
