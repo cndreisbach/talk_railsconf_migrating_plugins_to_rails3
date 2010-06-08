@@ -14,9 +14,14 @@ Class: title
 
 * Formtastic
 * Typus
+* `rails_console`
 
 ---
-# Rake tasks
+# Really easy stuff
+
+---
+
+## Rake tasks
 {: .section-title}
 
 ---
@@ -41,25 +46,25 @@ Rake tasks can also now be moved into a Railtie:
     end
 
 ---
-# Generators
+## Generators
 {: .section-title}
 
 --- 
 
-## Big changes
+### Big changes
 
 * Rails 2: Rubigen
 * Rails 3: Thor
 
 ---
 
-## Rails::Generators::Base
+### Rails::Generators::Base
 
 Replicates in a lot of the Rubigen API.
 
 ---
 
-## Rails 2 generator
+### Rails 2 generator
 
     class FormtasticGenerator < Rails::Generator::Base
       def manifest
@@ -75,7 +80,7 @@ Replicates in a lot of the Rubigen API.
 
 ---
 
-## Rails 3 generator
+### Rails 3 generator
 
     require 'rails/generators'
 
@@ -89,7 +94,7 @@ Replicates in a lot of the Rubigen API.
 
 ---
 
-## Rails 2 generator with name and options
+### Rails 2 generator with name and options
 
     class FormGenerator < Rails::Generator::NamedBase
       default_options :haml => false,
@@ -111,7 +116,7 @@ Replicates in a lot of the Rubigen API.
 
 ---
 
-## Rails 3 generator with name and options
+### Rails 3 generator with name and options
 
     class FormGenerator < Rails::Generators::NamedBase
       class_option :haml, :type => :boolean, 
@@ -136,7 +141,7 @@ Like tasks, generators have moved from `generators/` to `lib/generators/`.
 
 ---
 
-# RAILS_*
+## RAILS_*
 
 All the `RAILS_*` constants are now deprecated. 
 
@@ -147,7 +152,6 @@ Move to using the `Rails` object:
 
 ---
 # Plugging in to Rails 3
-{: .section-title}
 
 ---
 
@@ -181,6 +185,42 @@ You can execute whatever code you need to inside these.
 
 ---
 
+# The rest of it
+
+Guesswork, blood, and hacks
+
+---
+
+## `rails_console`
+
+Written by José Valim.
+
+![Rails Console](img/rails_console.png)
+
+Touches all parts of Rails.
+
+---
+
+## My bright idea
+
+I'd upgrade this plugin as a good example.
+
+---
+
+### Tears
+
+---
+
+## The first issue
+
+      ~/Projects/railsconf_presentation/test3 [master] > rails server
+      => Booting WEBrick
+      => Rails 3.0.0.beta3 application starting in development on http://0.0.0.0:3000
+      Exiting
+      /home/cnixon/.rvm/gems/ruby-1.9.2-preview3/gems/activesupport-3.0.0.beta3/lib/active_support/core_ext/module/aliasing.rb:31:in `alias_method': undefined method `clean_backtrace' for class `Exception' (NameError)
+
+---
+
 ## An example of using ActiveSupport hooks
 
 In the plugin `rails_footnotes`:
@@ -197,7 +237,7 @@ In the plugin `rails_footnotes`:
       end
     end
 
-    Exception.send :include, Footnotes::Extensions::
+    Exception.send :include, Footnotes::Extensions::Exception
 
 A problem: Exception doesn't have a `clean_backtrace` method in Rails 3.
 

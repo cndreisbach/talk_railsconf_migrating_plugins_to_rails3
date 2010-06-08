@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Migrating Plugins to Rails 3</title>
+    <meta content="Clinton R. Nixon" name="author" />
+    <link href="css/reset.css" rel="stylesheet" type="text/css" />
+    <link href="css/showtime.css" rel="stylesheet" type="text/css" />
+    <link href="css/railsconf.css" rel="stylesheet" type="text/css" />
+    <script src="js/jquery-1.4.2.min.js"></script>
+    <script src="js/jquery.history.js"></script>
+    <script src="js/showtime.js"></script>
+  </head>
+  <body>
+    <div class="slide title">
+<h1 id="migrating-plugins-to-rails-3">Migrating Plugins to Rails 3</h1>
+
+<h2 id="clinton-r-nixon-viget-labs">Clinton R. Nixon, Viget Labs</h2>
+</div>
+    <div class="slide"><h2 id="projects-used-for-examples">Projects used for examples</h2>
+
+<ul>
+  <li>Formtastic</li>
+  <li>Typus</li>
+  <li><code>rails_console</code></li>
+</ul>
+</div>
+    <div class="slide"><h1 id="really-easy-stuff">Really easy stuff</h1>
+</div>
+    <div class="slide"><h2 class="section-title" id="rake-tasks">Rake tasks</h2>
+</div>
+    <div class="slide"><p><code>tasks/</code> has been deprecated. Rake tasks go in <code>lib/tasks/</code> now.</p>
+</div>
+    <div class="slide" data-rake-tasks-can-also-now-be-moved-into-a-railtie="">
+<pre><code>module Typus
+  class Railtie &lt; ::Rails::Railtie
+    rake_tasks do
+      namespace :typus do
+        desc &quot;Install acts_as_list, acts_as_tree and paperclip.&quot;
+        task :misc do
+          # ...
+        end
+      end
+    end
+  end
+end
+</code></pre>
+</div>
+    <div class="slide"><h2 class="section-title" id="generators">Generators</h2>
+</div>
+    <div class="slide"><h3 id="big-changes">Big changes</h3>
+
+<ul>
+  <li>Rails 2: Rubigen</li>
+  <li>Rails 3: Thor</li>
+</ul>
+</div>
+    <div class="slide"><h3 id="railsgeneratorsbase">Rails::Generators::Base</h3>
+
+<p>Replicates in a lot of the Rubigen API.</p>
+</div>
+    <div class="slide"><h3 id="rails-2-generator">Rails 2 generator</h3>
+
+<pre><code>class FormtasticGenerator &lt; Rails::Generator::Base
+  def manifest
+    record do |m|
+      m.directory File.join('config', 'initializers')
+      m.template 'formtastic.rb',   File.join('config', 'initializers', 'formtastic.rb')
+      m.directory File.join('public', 'stylesheets')
+      m.template 'formtastic.css',   File.join('public', 'stylesheets', 'formtastic.css')
+      m.template 'formtastic_changes.css',   File.join('public', 'stylesheets', 'formtastic_changes.css')
+    end
+  end
+end
+</code></pre>
+</div>
+    <div class="slide"><h3 id="rails-3-generator">Rails 3 generator</h3>
+
+<pre><code>require 'rails/generators'
+
+class FormtasticGenerator &lt; Rails::Generators::Base
+  def install_formtastic
+    template File.join('config', 'initializers', 'formtastic.rb')
+    template File.join('public', 'stylesheets', 'formtastic.css')
+    template File.join('public', 'stylesheets', 'formtastic_changes.css')
+  end
+end
+</code></pre>
+</div>
+    <div class="slide"><h3 id="rails-2-generator-with-name-and-options">Rails 2 generator with name and options</h3>
+
+<pre><code>class FormGenerator &lt; Rails::Generator::NamedBase
+  default_options :haml =&gt; false,
+                  :partial =&gt; false
+
+  def initialize(runtime_args, runtime_options = {})
+    base_name, @controller_class_path = extract_modules(@name.pluralize)
+    # ...
+  end
+
+  def manifest
+    record do |m|
+      if options[:partial]
+        # ...
+      end
+    end
+  end
+end
+</code></pre>
+</div>
+    <div class="slide"><h3 id="rails-3-generator-with-name-and-options">Rails 3 generator with name and options</h3>
+
+<pre><code>class FormGenerator &lt; Rails::Generators::NamedBase
+  class_option :haml, :type =&gt; :boolean, 
+    :desc =&gt; 'Generate HAML instead of ERB.'
+  class_option :partial, :type =&gt; :boolean, 
+    :desc =&gt; 'Generate a form partial in the model views path, i.e. &quot;_form.html.erb&quot; or _form.html.haml&quot;.'
+  class_option :controller, :type =&gt; :string, :banner =&gt; 'PATH', 
+    :desc =&gt; 'Generate for custom controller/view path - in case model and controller namespace is different, i.e. &quot;admin/posts&quot;.'
+
+  def create_form 
+    base_name, controller_class_path = extract_modules(name.pluralize)
+
+    if options[:partial]
+      # ... 
+    end
+  end
+end
+</code></pre>
+</div>
+    <div class="slide"><p>Like tasks, generators have moved from <code>generators/</code> to <code>lib/generators/</code>.</p>
+</div>
+    <div class="slide"><h2 id="rails">RAILS_*</h2>
+
+<p>All the <code>RAILS_*</code> constants are now deprecated. </p>
+
+<p>Move to using the <code>Rails</code> object:</p>
+
+<ul>
+  <li><code>Rails.env</code></li>
+  <li><code>Rails.root</code></li>
+</ul>
+</div>
+    <div class="slide"><h1 id="plugging-in-to-rails-3">Plugging in to Rails 3</h1>
+</div>
+    <div class="slide"><h2 id="the-rails-2-way">The Rails 2 way</h2>
+
+<pre><code>ActionView::Base.send :include, Formtastic::SemanticFormHelper
+ActionView::Base.send :include, Formtastic::LayoutHelper
+</code></pre>
+</div>
+    <div class="slide"><h2 id="the-rails-3-way">The Rails 3 way</h2>
+
+<pre><code>ActiveSupport.on_load(:action_view) do
+  include Formtastic::SemanticFormHelper
+  include Formtastic::LayoutHelper
+end
+</code></pre>
+
+<p>Whatever callback you use, it gives you the context of <code>ActionWhatever::Base</code>.</p>
+</div>
+    <div class="slide"><h2 id="activesupport-hooks">ActiveSupport hooks</h2>
+
+<ul>
+  <li><code>before_configuration</code></li>
+  <li><code>before_initialize</code></li>
+  <li><code>before_eager_load</code></li>
+  <li><code>after_initialize</code></li>
+  <li>All the base classes: <code>active_record</code>, <code>action_controller</code>, <code>action_view</code>, <code>action_mailer</code>, <code>i18n</code></li>
+</ul>
+
+<p>You can execute whatever code you need to inside these.</p>
+</div>
+    <div class="slide"><h1 id="the-rest-of-it">The rest of it</h1>
+
+<p>Guesswork, blood, and hacks</p>
+</div>
+    <div class="slide"><h2 id="railsconsole"><code>rails_console</code></h2>
+
+<p>Written by José Valim.</p>
+
+<p><img alt="Rails Console" src="img/rails_console.png" /></p>
+
+<p>Touches all parts of Rails.</p>
+</div>
+    <div class="slide"><h2 id="my-bright-idea">My bright idea</h2>
+
+<p>I&rsquo;d upgrade this plugin as a good example.</p>
+</div>
+    <div class="slide"><h3 id="tears">Tears</h3>
+</div>
+    <div class="slide"><h2 id="the-first-issue">The first issue</h2>
+
+<pre><code>  ~/Projects/railsconf_presentation/test3 [master] &gt; rails server
+  =&gt; Booting WEBrick
+  =&gt; Rails 3.0.0.beta3 application starting in development on http://0.0.0.0:3000
+  Exiting
+  /home/cnixon/.rvm/gems/ruby-1.9.2-preview3/gems/activesupport-3.0.0.beta3/lib/active_support/core_ext/module/aliasing.rb:31:in `alias_method': undefined method `clean_backtrace' for class `Exception' (NameError)
+</code></pre>
+</div>
+    <div class="slide"><h2 id="an-example-of-using-activesupport-hooks">An example of using ActiveSupport hooks</h2>
+
+<p>In the plugin <code>rails_footnotes</code>:</p>
+
+<pre><code>module Footnotes::Extensions::Exception
+  def self.included(base)
+    base.class_eval do
+      alias_method_chain :clean_backtrace, :links
+    end
+  end
+  # ... 
+  def clean_backtrace_with_links
+    # ...
+  end
+end
+
+Exception.send :include, Footnotes::Extensions::Exception
+</code></pre>
+
+<p>A problem: Exception doesn&rsquo;t have a <code>clean_backtrace</code> method in Rails 3.</p>
+</div>
+    <div class="slide"><h2 id="the-solution">The solution</h2>
+</div>
+    <script type="text/javascript">
+// <![CDATA[
+$(function () { $(".slide").slippy(); });
+// ]]>
+</script>
+
+</body>
+</html>
