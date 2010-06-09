@@ -8,6 +8,8 @@ skip: 0
 
 # The following options are for Gvim usage.
 vim: gvim
+vimrc: |
+  map UU :!google-chrome <cWORD><cr>
 gvimrc: |
   set guifont=Droid\ Sans\ Mono\ 20
   colorscheme default
@@ -35,11 +37,35 @@ gvimrc: |
                                               Viget Labs o°
 
 ----
+== Talking about the edge can suck
+
+When I proposed this talk, tons of plugins and gems didn't work
+with Rails 3.
+
+Today, almost everything that's widely used works, which is awesome.
+
+== http://railsplugins.org
++
+But this is still an important topic. The same techniques apply to
+all the smaller plugins that aren't on RailsPlugins, as well as
+all the hairy monkey-patching code in your legacy Rails apps.
+
+----
+
 == Projects used for examples
 
 * Formtastic
 * Typus
 * rails_console
+
+----
+
+== Credit where credit is due
+
+* The Rails 3 Upgrade Handbook by Jeremy McAnally: 
+  http://www.railsupgradehandbook.com/
+
+* The Rails Dispatch Blog: http://www.railsdispatch.com/
 
 ----
 == First, the easy stuff
