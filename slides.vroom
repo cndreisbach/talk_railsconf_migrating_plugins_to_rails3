@@ -166,7 +166,6 @@ Move to using the Rails object:
 == Plugging in to Rails 3
 
 ---- ruby
-
 # The Rails 2 way
 
 ActionView::Base.send :include, Formtastic::SemanticFormHelper
@@ -389,3 +388,219 @@ You should use the Ruby debugger.
 +
 Instead, I stuck "raise 'hello'" all up in this plugin until I found
 what wasn't getting executed.
+
+---- ruby
+
+# in rails-footnotes/footnotes.rb
+def valid?
+  performed_render? && valid_format? && valid_content_type? &&
+    @body.is_a?(String) && !component_request? && !xhr? &&
+    !footnotes_disabled?
+end
++
+# This doesn't exist any more, so it returns nil.
+def performed_render?
+  @controller.instance_variable_get(:@performed_render)
+end
++
+# @template doesn't respond to template_format any more, so it
+# throws a giant exception.
+def valid_format?
+  [:html,:rhtml,:xhtml,:rxhtml].include?(@template.template_format)
+end
+
+----
+
+== Time to punt
+
+What is this code actually doing?
+
+performed_render? && valid_format? && valid_content_type? &&
+    @body.is_a?(String) && !component_request? && !xhr? &&
+    !footnotes_disabled?
++
+It's preventing the footnotes from trying to output whenever:
+
+* You haven't rendered.
+* You're not rendering HTML.
+* You're not sending an XHR.
+* You've turned footnotes off.
++
+Ok, whatever. Moving on. This can be fixed later.
+
+---- ruby
+
+def valid?
+  true # STFU
+end
+
+----
+
+== Ok, why isn't it showing up now?
+
+Time to break out the raise.
+
+---- ruby
+
+# in lib/rails-footnotes/footnotes.rb
+
+def initialize(controller)
+  # ...
+  @body = controller.response.body
+end
+
+def insert_text(position, pattern, new_text)
+  index = case pattern
+    when Regexp
+      if match = @body.match(pattern)
+        match.offset(0)[position == :before ? 0 : 1]
+      else
+        @body.size
+      end
+    else
+      pattern
+    end
+
+  @body.insert index, new_text
+end
+
+----
+
+== Not entirely sure what is going wrong
+
+@body and controller.response.body reference the same String, and
+insert changes the String, which is mutable, so I'm stumped.
+
+However, if I reassign @body to controller.response.body, it works.
+
+I am not going to argue with working code, even if it's mystifying.
+
+----
+
+== Working!
++
+== But soon, disaster strikes
++
+rails_footnotes is made up of separate notes, all subclasses from 
+AbstractNote.
+
+Some of them are having real problems:
+
+* LayoutNote
+* FiltersNote
+* LogNote
+* RoutesNote
+
+Luckily, rails_footnotes has a configuration option to select notes.
+I'm going to turn off problem ones.
+
+---- center
+
+And that gets me from completely broken to working.
+
+You can find the working version at
+http://github.com/crnixon/rails_footnotes.git
+
+----
+
+== LayoutNote
+
+Let's fix this, and see what's changed about controllers and layouts.
+
+LayoutNote is barfing because it calls a method called active_layout
+on controller instances.
+
+active_layout doesn't exist in Rails 3.
+
+---- ruby
+
+# The first error
+# In this case, it's just checking to see that there is a layout.
+#
+def valid?
+  prefix? && @controller.active_layout
+end
+
+# The second error
+# This time, it's checking for the actual layout name.
+#
+def filename
+  File.join(File.expand_path(RAILS_ROOT), 'app', 'layouts', "#{@controller.active_layout.to_s.underscore}").sub('/layouts/layouts/', '/views/layouts/')
+end
+
+---- ruby
+
+# The first error
+# ActionController::Base has a new method, action_has_layout?
+# that we can use to check for the existence of the layout.
+def valid?
+  prefix? && @controller.action_has_layout?
+end
+
+# The second error
+# I'm not so happy with this one. I had to call a private
+# method called _layout to get the layout name.
+def filename
+  File.join(File.expand_path(RAILS_ROOT), 'app', 'layouts', "#{@controller.send(:_layout).to_s.underscore}").sub('/layouts/layouts/', '/views/layouts/')
+end
+
+----
+
+== Is this OK?
+
+I'm looking at the internals of Rails every day. Maybe I missed 
+something, but I don't think there's another way to get the layout
+name.
++
+I've seen this "_method_name" convention a lot in Rails 3, and it's
+obvious it's meant to say "This isn't part of the public API: don't
+mess with it."
++
+That's fine, but shouldn't there be a good way to see what our
+controller is doing?
+
+----
+
+== FiltersNote
+
+The same thing happened when fixing FiltersNote, but worse.
++
+ActionController::Base used to handle its filtering system, and you 
+could access the filters on a controller by calling filter_chain.
++
+In Rails 3, filters have been pulled out to be handled by
+ActiveSupport::Callbacks, which handles all callback-type activity
+throughout Rails. This is pretty cool.
++
+But I can't get my filter chain to see what filters will be called
+for an action. To get it, I had to end up calling this:
++
+== _process_action_callbacks
+
+----
+
+== Something is rotten in the state of Denmark
++
+I left this project with some concerns. Many things that were 
+available easily before are hidden now behind new abstractions
+in ActiveSupport.
++
+With that said, many plugins have been easily ported and Rails 3 is
+a real improvement. I'm happy to be using it.
+
+----
+ ___________________________________
+/ Thanks for listening to my tale!  \
+|                                   |
+| Questions?                        |
+|                                   |
+\ @crnixon clinton.nixon@viget.com  /
+ -----------------------------------
+  \
+   \   \_\_    _/_/
+    \      \__/
+           (oo)\_______
+           (__)\       )\/\
+               ||----w |
+               ||     ||
+
