@@ -11,8 +11,9 @@ vimrc: |
   map UU :!google-chrome <cWORD><cr>
 gvimrc: |
   set guifont=Droid\ Sans\ Mono\ 20
-  colorscheme default
+  colorscheme morning
   set nonumber
+----
 
 ----
     __  ____                  __  _
@@ -297,6 +298,10 @@ img/rails_footnotes.png
 
 ----
 
+img/filter_chain_weeping.png
+
+----
+
 == My original outline
 
 * Intro
@@ -472,7 +477,8 @@ found what wasn't getting executed.
 # in rails-footnotes/footnotes.rb
 def valid?
   performed_render? && valid_format? && valid_content_type? &&
-    @body.is_a?(String) && !component_request? && !xhr? && !footnotes_disabled?
+    @body.is_a?(String) && !component_request? && !xhr? 
+    && !footnotes_disabled?
 end
 +
 # This doesn't exist any more, so it returns nil.
@@ -493,7 +499,8 @@ end
 What is this code actually doing?
 
   performed_render? && valid_format? && valid_content_type? &&
-    @body.is_a?(String) && !component_request? && !xhr? && !footnotes_disabled?
+    @body.is_a?(String) && !component_request? && !xhr? 
+    && !footnotes_disabled?
 +
 It's preventing the footnotes from trying to output whenever:
 
