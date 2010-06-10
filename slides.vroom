@@ -1,10 +1,9 @@
 ---- config
 # Basic config options.
 title: Migrating Plugins to Rails 3
-indent: 5
+indent: 4
 height: 25
 width: 72
-skip: 0
 
 # The following options are for Gvim usage.
 vim: gvim
@@ -42,7 +41,7 @@ gvimrc: |
 When I proposed this talk, tons of plugins and gems didn't work
 with Rails 3.
 
-Today, almost everything that's widely used works, which is awesome.
+Today, almost everything that's widely used works, which is great.
 
 == http://railsplugins.org
 +
@@ -56,7 +55,7 @@ all the hairy monkey-patching code in your legacy Rails apps.
 
 * Formtastic
 * Typus
-* rails_console
+* rails_footnotes
 
 ----
 
@@ -73,6 +72,8 @@ all the hairy monkey-patching code in your legacy Rails apps.
 * Rake tasks
 * Generators
 * RAILS_* constants
+* Hooking into Rails
+* Gems
 
 ----
 == Rake tasks
@@ -86,7 +87,7 @@ Rake tasks go in lib/tasks/ now.
 
 Rake tasks can also now be moved into a Railtie:
 
----- ruby,i4
+---- ruby
 
 module Typus
   class Railtie < ::Rails::Railtie
@@ -104,7 +105,8 @@ end
 ----
 == Generators
 
-Like tasks, generators have moved from generators/ to lib/generators/.
+Like tasks, generators have moved from generators/ to 
+lib/generators/.
 +
 Big changes:
 
@@ -128,7 +130,8 @@ class FormtasticGenerator < Rails::Generator::Base
       m.template 'formtastic.css',   
         File.join('public', 'stylesheets', 'formtastic.css')
       m.template 'formtastic_changes.css',   
-        File.join('public', 'stylesheets', 'formtastic_changes.css')
+        File.join('public', 'stylesheets', 
+        'formtastic_changes.css')
     end
   end
 end
@@ -143,7 +146,8 @@ class FormtasticGenerator < Rails::Generators::Base
   def install_formtastic
     template File.join('config', 'initializers', 'formtastic.rb')
     template File.join('public', 'stylesheets', 'formtastic.css')
-    template File.join('public', 'stylesheets', 'formtastic_changes.css')
+    template File.join('public', 'stylesheets', 
+      'formtastic_changes.css')
   end
 end
 
@@ -156,7 +160,8 @@ class FormGenerator < Rails::Generator::NamedBase
                   :partial => false
 
   def initialize(runtime_args, runtime_options = {})
-    base_name, @controller_class_path = extract_modules(@name.pluralize)
+    base_name, @controller_class_path = 
+      extract_modules(@name.pluralize)
     # ...
   end
 
@@ -177,12 +182,13 @@ class FormGenerator < Rails::Generators::NamedBase
   class_option :haml, :type => :boolean, 
     :desc => 'Generate HAML instead of ERB.'
   class_option :partial, :type => :boolean, 
-    :desc => 'Generate a form partial in the model views path, i.e. "_form.html.erb" or _form.html.haml".'
+    :desc => 'Generate a form partial ...'
   class_option :controller, :type => :string, :banner => 'PATH', 
-    :desc => 'Generate for custom controller/view path - in case model and controller namespace is different, i.e. "admin/posts".'
+    :desc => 'Generate for custom controller/view path ...' 
 
   def create_form 
-    base_name, controller_class_path = extract_modules(name.pluralize)
+    base_name, controller_class_path = 
+      extract_modules(name.pluralize)
 
     if options[:partial]
       # ... 
@@ -200,6 +206,7 @@ Move to using the Rails object:
 
   * Rails.env
   * Rails.root
+  * Rails.logger
 
 ----
 
@@ -240,6 +247,16 @@ for the base classes.
 
 ----
 
+== Gemify your plugin
+
+I've been ambivalent on this in the past, but with Rails 3, it
+makes a lot of sense.
+
+* http://github.com/technicalpickles/jeweler
+* http://www.railsdispatch.com/posts/how-rails-3-enables-more-choices-part-1
+
+----
+
 == So that was the easy stuff.
 +
 == Now, for the rest of it:
@@ -248,13 +265,13 @@ for the base classes.
 
 ----
 
-== rails_console
+== rails_footnotes
 
 Written by José Valim, member of Rails core team.
 
 Touches all parts of Rails. 
 
-img/rails_console.png
+img/rails_footnotes.png
 
 ----
 
@@ -280,6 +297,29 @@ img/rails_console.png
 
 ----
 
+== My original outline
+
+* Intro
+* Easy Stuff
+  * Tasks
+  * Generators
+  * `RAILS_*`
+* Plugging into Rails 3
+  * ActiveSupport
+  * test framework
+  * JS library
+* ActiveRecord and ActiveModel
+  * `errors.on_base` and `errors_add_to_base`
+* ActionController and ActionDispatch
+* Routes
+* ActionView
+  * JavaScript
+    * `link_to_function`
+    * `remote_form_for`
+  * Safety with `html_safe` and `safe_helper`
+* Bonus: Gemifying your plugin
+----
+
 == The first issue
 
 ~/Projects/railsconf_presentation/test3 [master] > rails server
@@ -296,8 +336,8 @@ Ok, so what happened to clean_backtrace?
 
 == Investigation
 
-In Rails 2.3.8, I found clean_backtrace as an extension to Exception 
-in ActiveSupport.
+In Rails 2.3.8, I found clean_backtrace as an extension to 
+Exception in ActiveSupport.
 
 I grepped for clean_backtrace in Rails 3: no dice.
 +
@@ -307,8 +347,8 @@ How I found it:
 +
 It's a new class, ActiveSupport::BacktraceCleaner.
 +
-clean_backtrace cleaned the whole backtrace at once; BacktraceCleaner
-does it line by line.
+clean_backtrace cleaned the whole backtrace at once; 
+BacktraceCleaner does it line by line.
 
 ---- ruby
 
@@ -332,22 +372,21 @@ Exception.send :include, Footnotes::Extensions::Exception
 
 == The solution
 
-I looked at BacktraceCleaner's code, and it has an add_filter method.
-Bingo!
+I looked at BacktraceCleaner's code, and it has 
+an add_filter method. Bingo!
 
-Now I need to add the code from Footnotes' clean_backtrace_with_links
-into a block and pass it to add_filter.
+Now I need to add the code from Footnotes' 
+clean_backtrace_with_links into a block and 
+pass it to add_filter.
 
 ---- ruby
 
-# Here's one of those ActiveSupport hooks.
 ActiveSupport.on_load(:after_initialize) do
   Rails.backtrace_cleaner.add_filter { |line|
     Footnotes::Backtracer.add_links_to_backtrace(line)
   }
 end
 
-# ...
 module Backtracer
   def self.add_links_to_backtrace(line)
     unless ::Footnotes::Filter.prefix.blank? 
@@ -369,9 +408,8 @@ end
 
 == Problem solved! (kind of)
 
-That error's not being thrown any more. Does the backtrace filter work?
-
-I'm not sure. 
+That error's not being thrown any more. Does the backtrace filter 
+work? I'm not sure. 
 
 The lesson here is that sometimes you just have to get your plugin
 to run before you get it to run right.
@@ -398,8 +436,8 @@ That hasn't changed. So what's wrong?
 
 ---- ruby
 
-# We have to make sure we don't call establish_connection until after
-# initialization.
+# We have to make sure we don't call establish_connection until 
+# after initialization.
 
 # in rails-footnotes/notes/queries_note.rb
 # change this line:
@@ -426,16 +464,15 @@ I should have used the Ruby debugger.
 +
 You should use the Ruby debugger.
 +
-Instead, I stuck "raise 'hello'" all up in this plugin until I found
-what wasn't getting executed.
+Instead, I stuck "raise 'hello'" all up in this plugin until I 
+found what wasn't getting executed.
 
 ---- ruby
 
 # in rails-footnotes/footnotes.rb
 def valid?
   performed_render? && valid_format? && valid_content_type? &&
-    @body.is_a?(String) && !component_request? && !xhr? &&
-    !footnotes_disabled?
+    @body.is_a?(String) && !component_request? && !xhr? && !footnotes_disabled?
 end
 +
 # This doesn't exist any more, so it returns nil.
@@ -455,9 +492,8 @@ end
 
 What is this code actually doing?
 
-performed_render? && valid_format? && valid_content_type? &&
-    @body.is_a?(String) && !component_request? && !xhr? &&
-    !footnotes_disabled?
+  performed_render? && valid_format? && valid_content_type? &&
+    @body.is_a?(String) && !component_request? && !xhr? && !footnotes_disabled?
 +
 It's preventing the footnotes from trying to output whenever:
 
@@ -471,7 +507,7 @@ Ok, whatever. Moving on. This can be fixed later.
 ---- ruby
 
 def valid?
-  true # STFU
+  true 
 end
 
 ----
@@ -506,14 +542,16 @@ end
 
 ----
 
-== Not entirely sure what is going wrong
+== What is the problem here?
 
-@body and controller.response.body reference the same String, and
-insert changes the String, which is mutable, so I'm stumped.
+In Rails 2, Response#body gave us a string which was the body, 
+meaning we had a reference to what would be rendered eventually.
 
-However, if I reassign @body to controller.response.body, it works.
-
-I am not going to argue with working code, even if it's mystifying.
+In Rails 3, the string is constructed and then sent to us, so we 
+don't have a reference to the text that will be rendered.
+ 
+If I reassign @body to controller.response.body after 
+@body.insert, it works.
 
 ----
 
@@ -531,8 +569,8 @@ Some of them are having real problems:
 * LogNote
 * RoutesNote
 
-Luckily, rails_footnotes has a configuration option to select notes.
-I'm going to turn off problem ones.
+Luckily, rails_footnotes has a configuration option to select 
+notes. I'm going to turn off problem ones.
 
 ---- center
 
@@ -545,10 +583,11 @@ http://github.com/crnixon/rails_footnotes.git
 
 == LayoutNote
 
-Let's fix this, and see what's changed about controllers and layouts.
+Let's fix this, and see what's changed about controllers and 
+layouts.
 
-LayoutNote is barfing because it calls a method called active_layout
-on controller instances.
+LayoutNote is barfing because it calls a method called 
+active_layout on controller instances.
 
 active_layout doesn't exist in Rails 3.
 
@@ -565,7 +604,9 @@ end
 # This time, it's checking for the actual layout name.
 #
 def filename
-  File.join(File.expand_path(RAILS_ROOT), 'app', 'layouts', "#{@controller.active_layout.to_s.underscore}").sub('/layouts/layouts/', '/views/layouts/')
+  File.join(File.expand_path(RAILS_ROOT), 'app', 'layouts', 
+    "#{@controller.active_layout.to_s.underscore}").sub(
+    '/layouts/layouts/', '/views/layouts/')
 end
 
 ---- ruby
@@ -581,7 +622,9 @@ end
 # I'm not so happy with this one. I had to call a private
 # method called _layout to get the layout name.
 def filename
-  File.join(File.expand_path(RAILS_ROOT), 'app', 'layouts', "#{@controller.send(:_layout).to_s.underscore}").sub('/layouts/layouts/', '/views/layouts/')
+  File.join(File.expand_path(RAILS_ROOT), 'app', 'layouts', 
+   "#{@controller.send(:_layout).to_s.underscore}").sub(
+   '/layouts/layouts/', '/views/layouts/')
 end
 
 ----
@@ -592,9 +635,9 @@ I'm looking at the internals of Rails every day. Maybe I missed
 something, but I don't think there's another way to get the layout
 name.
 +
-I've seen this "_method_name" convention a lot in Rails 3, and it's
-obvious it's meant to say "This isn't part of the public API: don't
-mess with it."
+I've seen this "_method_name" convention a lot in Rails 3, and 
+it's obvious it's meant to say "This isn't part of the public API: 
+don't mess with it."
 +
 That's fine, but shouldn't there be a good way to see what our
 controller is doing?
@@ -605,8 +648,9 @@ controller is doing?
 
 The same thing happened when fixing FiltersNote, but worse.
 +
-ActionController::Base used to handle its filtering system, and you 
-could access the filters on a controller by calling filter_chain.
+ActionController::Base used to handle its filtering system, and 
+you could access the filters on a controller by calling 
+filter_chain.
 +
 In Rails 3, filters have been pulled out to be handled by
 ActiveSupport::Callbacks, which handles all callback-type activity
@@ -625,8 +669,8 @@ I left this project with some concerns. Many things that were
 available easily before are hidden now behind new abstractions
 in ActiveSupport.
 +
-With that said, many plugins have been easily ported and Rails 3 is
-a real improvement. I'm happy to be using it.
+With that said, many plugins have been easily ported and Rails 3 
+is a real improvement. I'm happy to be using it.
 
 ----
  ___________________________________
@@ -634,7 +678,8 @@ a real improvement. I'm happy to be using it.
 |                                   |
 | Questions?                        |
 |                                   |
-\ @crnixon clinton.nixon@viget.com  /
+| @crnixon                          |
+\ clinton.nixon@viget.com           /
  -----------------------------------
   \
    \   \_\_    _/_/
